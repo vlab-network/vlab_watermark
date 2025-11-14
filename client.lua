@@ -2,68 +2,19 @@ local isUiOpen              = false
 local userTurnedOff         = false
 local KVP_OFF_KEY           = "vlab_watermark_off"
 local KVP_POS_KEY           = "vlab_watermark_position"
-local _last                 = { money=nil, gold=nil, displayId=nil }
+local _last                 = { money=nil, gold=nil, rol=nil, displayId=nil }
 local __displayIdFromServer = nil
-local MENU_POLL_MS     = 150
-local _vorpCountLocal  = 0
-local _menuOpenCached  = false
-local _lastMenuPoll    = 0
+local MENU_POLL_MS          = 150
+local _vorpCountLocal       = 0
+local _menuOpenCached       = false
+local _lastMenuPoll         = 0
 
 local function _vorpEnabled()
   return config and (config.VorpMenu == true or config.vorpMenu == true)
 end
 
-AddEventHandler("vorp_menu:openmenu",  function() _vorpCountLocal = _vorpCountLocal + 1 end)
-
-local function _afterMenuClosedFast()
-  CreateThread(function()
-    Wait(50)
-    _lastMenuPoll = 0
-    if (not IsPauseMenuActive()) and (not isUiOpen) and (not userTurnedOff) and (not IsScreenFadedOut()) then
-      SendNUIMessage({ type='ToggleClock', visible=true })
-      if not isUiOpen then
-        local function _getSavedPosition()
-          local pos = GetResourceKvpString(KVP_POS_KEY)
-          if pos == nil or pos == "" then
-            return (config and config.position) or "top-right"
-          end
-          return pos
-        end
-        local function _readStats()
-          local st = LocalPlayer and LocalPlayer.state
-          local ch = st and st.Character or nil
-          local money  = (type(ch)=="table") and ch.Money or nil
-          local gold   = (type(ch)=="table") and ch.Gold  or nil
-          local displayId = __displayIdFromServer
-          if not (money or gold or displayId) then return nil end
-          return { money = money, gold = gold, displayId = displayId }
-        end
-        local stats = _readStats()
-        local ok, err = pcall(function()
-          SendNUIMessage({ type='DisplayWM', visible=true, position=_getSavedPosition(), stats=stats })
-        end)
-        if not ok then print("^1[RedM-WM] NUI error: "..tostring(err)) end
-        isUiOpen = true
-      end
-    end
-  end)
-end
-
-AddEventHandler("vorp_menu:closemenu", function()
-  _vorpCountLocal = math.max(0, _vorpCountLocal - 1)
-  _afterMenuClosedFast()
-end)
-AddEventHandler("vorp_menu:closeall", function()
-  _vorpCountLocal = 0
-  _afterMenuClosedFast()
-end)
-AddEventHandler("menuapi:closemenu", function()
-  _vorpCountLocal = 0
-  _afterMenuClosedFast()
-end)
-AddEventHandler("menuapi:closeall", function()
-  _vorpCountLocal = 0
-  _afterMenuClosedFast()
+AddEventHandler("vorp_menu:openmenu", function()
+  _vorpCountLocal = _vorpCountLocal + 1
 end)
 
 local function _safeGetMenuData()
@@ -76,8 +27,20 @@ end
 local function _computeMenuOpen(md)
   local count = tonumber(md._openCount) or 0
   if count <= 0 and type(md.Opened) == "table" then
-    for i=1,#md.Opened do if md.Opened[i] ~= nil then count = 1 break end end
-    if count == 0 then for _, v in pairs(md.Opened) do if v ~= nil then count = 1 break end end end
+    for i=1,#md.Opened do
+      if md.Opened[i] ~= nil then
+        count = 1
+        break
+      end
+    end
+    if count == 0 then
+      for _, v in pairs(md.Opened) do
+        if v ~= nil then
+          count = 1
+          break
+        end
+      end
+    end
   end
   return count > 0
 end
@@ -100,15 +63,12 @@ local function _anyMenuOpen_cached()
       _menuOpenCached = (_vorpCountLocal > 0)
     end
   end
-
   return _menuOpenCached
 end
 
 local function _isBlocked()
   return IsPauseMenuActive() or IsScreenFadedOut() or _anyMenuOpen_cached()
 end
-
-local VALID_POS = { ["top-right"]=1, ["top-left"]=1, ["bottom-right"]=1, ["bottom-left"]=1 }
 
 local function _getSavedPosition()
   local pos = GetResourceKvpString(KVP_POS_KEY)
@@ -126,47 +86,136 @@ end
 local function _readStats()
   local st = LocalPlayer and LocalPlayer.state
   local ch = st and st.Character or nil
+
   local money  = (type(ch)=="table") and ch.Money or nil
   local gold   = (type(ch)=="table") and ch.Gold  or nil
+
+  local rol = nil
+  if type(ch) == "table" then
+    rol = ch.Rol or ch.rol or ch.ROL or ch.Currency2 or ch.currency2 or ch.Gold2 or ch.gold2
+  end
+  if rol == nil then rol = _last.rol end
+
   local displayId = __displayIdFromServer
-  if not (money or gold or displayId) then return nil end
-  return { money = money, gold = gold, displayId = displayId }
+
+  if not (money or gold or rol or displayId) then return nil end
+
+  return {
+    money     = money,
+    gold      = gold,
+    rol       = rol,
+    displayId = displayId
+  }
 end
 
 local function _sendStats(force)
   local s = _readStats()
   if not s then return end
-  if force or s.money ~= _last.money or s.gold ~= _last.gold or s.displayId ~= _last.displayId then
-    _last = { money = s.money, gold = s.gold, displayId = s.displayId }
-    SendNUIMessage({ type='SetStats', money=s.money, gold=s.gold, displayId=s.displayId })
+
+  if force
+  or s.money     ~= _last.money
+  or s.gold      ~= _last.gold
+  or s.rol       ~= _last.rol
+  or s.displayId ~= _last.displayId
+  then
+    _last = {
+      money     = s.money,
+      gold      = s.gold,
+      rol       = s.rol,
+      displayId = s.displayId
+    }
+
+    SendNUIMessage({
+      type      = 'SetStats',
+      money     = s.money,
+      gold      = s.gold,
+      rol       = s.rol,
+      displayId = s.displayId
+    })
   end
 end
 
 local function showWM(display)
   local stats = display and _readStats() or nil
   local ok, err = pcall(function()
-    SendNUIMessage({ type='DisplayWM', visible=display, position=_getSavedPosition(), stats=stats })
+    SendNUIMessage({
+      type     = 'DisplayWM',
+      visible  = display,
+      position = _getSavedPosition(),
+      stats    = stats
+    })
   end)
-  if not ok then print("^1[RedM-WM] NUI error: "..tostring(err)) end
+  if not ok then
+    print("^1[RedM-WM] NUI error: "..tostring(err))
+  end
   isUiOpen = display
 end
 
+local function _afterMenuClosedFast()
+  CreateThread(function()
+    Wait(50)
+    _lastMenuPoll = 0
+    if (not IsPauseMenuActive()) and (not isUiOpen) and (not userTurnedOff) and (not IsScreenFadedOut()) then
+      SendNUIMessage({ type='ToggleClock', visible=true })
+      if not isUiOpen then
+        local stats = _readStats()
+        local ok, err = pcall(function()
+          SendNUIMessage({
+            type     = 'DisplayWM',
+            visible  = true,
+            position = _getSavedPosition(),
+            stats    = stats
+          })
+        end)
+        if not ok then
+          print("^1[RedM-WM] NUI error: "..tostring(err))
+        end
+        isUiOpen = true
+      end
+    end
+  end)
+end
+
+AddEventHandler("vorp_menu:closemenu", function()
+  _vorpCountLocal = math.max(0, _vorpCountLocal - 1)
+  _afterMenuClosedFast()
+end)
+
+AddEventHandler("vorp_menu:closeall", function()
+  _vorpCountLocal = 0
+  _afterMenuClosedFast()
+end)
+
+AddEventHandler("menuapi:closemenu", function()
+  _vorpCountLocal = 0
+  _afterMenuClosedFast()
+end)
+
+AddEventHandler("menuapi:closeall", function()
+  _vorpCountLocal = 0
+  _afterMenuClosedFast()
+end)
+
 CreateThread(function()
-  -- init
   userTurnedOff = (GetResourceKvpInt(KVP_OFF_KEY) == 1)
   while not NetworkIsSessionStarted() do Wait(250) end
   Wait(1000)
+
   local blocked      = _isBlocked()
   local lastBlocked  = blocked
   local lastMinute   = -1
   local lastStatsTs  = 0
+
   local visible = (not userTurnedOff) and (not blocked)
   showWM(visible)
   SendNUIMessage({ type='ToggleClock', visible = not blocked })
   if visible then _sendStats(true) end
+
   TriggerServerEvent("AX##LWZ:vlab_watermark:requestGameId")
+
   while true do
     local sleep = 200
+
     blocked = _isBlocked()
     if blocked ~= lastBlocked then
       lastBlocked = blocked
@@ -181,16 +230,19 @@ CreateThread(function()
       SendNUIMessage({ type='ToggleClock', visible = true })
       _sendStats(true)
     end
+
     local t = GetGameTimer()
     if isUiOpen and not userTurnedOff and (t - lastStatsTs) >= 1000 then
       _sendStats(false)
       lastStatsTs = t
     end
+
     local minuteNow = (GetClockHours() * 60) + GetClockMinutes()
     if minuteNow ~= lastMinute then
       lastMinute = minuteNow
       SendNUIMessage({ type='SetClock', gameTime=_fmtGameTime() })
     end
+
     Wait(sleep)
   end
 end)
@@ -207,10 +259,11 @@ AddEventHandler("vorp:SelectedCharacter", function(_)
 end)
 
 RegisterNetEvent("AX##LWZ:vlab_watermark:setGameId")
-AddEventHandler("AX##LWZ:vlab_watermark:setGameId", function(displayId, money, gold)
+AddEventHandler("AX##LWZ:vlab_watermark:setGameId", function(displayId, money, gold, rol)
   if displayId and displayId ~= "" then __displayIdFromServer = tostring(displayId) end
   if money ~= nil then _last.money = money end
   if gold  ~= nil then _last.gold  = gold  end
+  if rol   ~= nil then _last.rol   = rol   end
   _sendStats(true)
 end)
 
@@ -236,10 +289,14 @@ end)
 
 RegisterCommand('watermark', function(_, args)
   if not (config and config.allowoff) and (not args[1] or args[1]=="") then
-    TriggerEvent('chat:addMessage', { color={255,0,0}, multiline=false,
-      args={"^9[RedM-WM] ^1Questo server ha disabilitato il comando /watermark"} })
+    TriggerEvent('chat:addMessage', {
+      color={255,0,0},
+      multiline=false,
+      args={"^9[RedM-WM] ^1Questo server ha disabilitato il comando /watermark"}
+    })
     return
   end
+
   local sub = tostring(args[1] or ""):lower()
   if sub == "pos" then
     TriggerEvent('SetWMPosition', tostring(args[2] or ""):lower())

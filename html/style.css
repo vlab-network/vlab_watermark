@@ -6,10 +6,10 @@
   --logo-opacity: 0.85;
   --gap: 8px;
 
-  --icon: 34px;
+  --icon: 30px;
   --icons-opacity: 0.95;
   --id-icon-opacity: 0.95;
-  --icon-id: 38px;
+  --icon-id: 32px;
 
   --value-font: 12px;
   --clock-font: 12px;
@@ -31,6 +31,9 @@
   --gold-bar-start:  #ffd777;
   --gold-bar-end:    #d4a017;
 
+  --rol-bar-start:   #77baff;
+  --rol-bar-end:     #2c82ff;
+
   --money-ratio: 0;
   --gold-ratio:  0;
 }
@@ -44,7 +47,7 @@ body { margin: 0; padding: 0; }
   height: calc(var(--logo-size) * var(--ui-scale));
   display: none;
   flex-direction: row;
-  align-items: center;
+  align-items: stretch;
   gap: calc(var(--gap) * var(--ui-scale));
   opacity: 0;
 }
@@ -72,12 +75,12 @@ header img {
 }
 
 #stats {
-  height: auto;
+  height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: center;
+  justify-content: space-between;
   align-items: flex-start;
-  gap: calc(4px * var(--ui-scale));
+  gap: 0;
   padding-right: calc(6px * var(--ui-scale));
   min-width: calc(var(--min-stats-width) * var(--ui-scale));
 }
@@ -177,14 +180,16 @@ header img {
 #hud-clock.hidden { display: none; }
 
 #stat-money,
-#stat-gold {
+#stat-gold,
+#stat-rol {
   position: relative;
   display: inline-block;
   padding-bottom: calc( (var(--bar-height) + var(--bar-gap-top)) * var(--ui-scale) );
 }
 
 #stat-money::after,
-#stat-gold::after {
+#stat-gold::after,
+#stat-rol::after {
   content: "";
   position: absolute;
   left: 0;
@@ -203,4 +208,9 @@ header img {
 #stat-gold::after {
   background: linear-gradient(90deg, var(--gold-bar-start), var(--gold-bar-end));
   width: var(--gold-width, 0px);
+}
+
+#stat-rol::after {
+  background: linear-gradient(90deg, var(--rol-bar-start), var(--rol-bar-end));
+  width: var(--rol-width, 0px);
 }

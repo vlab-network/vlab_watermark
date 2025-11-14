@@ -26,6 +26,8 @@ function formatAmountHTML(input) {
 function syncBarsToText() {
   const m = document.getElementById('stat-money');
   const g = document.getElementById('stat-gold');
+  const r = document.getElementById('stat-rol');
+
   if (m) {
     const w = Math.ceil(m.getBoundingClientRect().width);
     m.style.setProperty('--money-width', w + 'px');
@@ -33,6 +35,10 @@ function syncBarsToText() {
   if (g) {
     const w = Math.ceil(g.getBoundingClientRect().width);
     g.style.setProperty('--gold-width', w + 'px');
+  }
+  if (r) {
+    const w = Math.ceil(r.getBoundingClientRect().width);
+    r.style.setProperty('--rol-width', w + 'px');
   }
 }
 
@@ -87,12 +93,14 @@ window.addEventListener('message', function (e) {
       container.style.display = 'flex';
       container.style.opacity = 1;
       if (data.stats) {
-        const s = data.stats;
+        const s      = data.stats;
         const elMoney = document.getElementById('stat-money');
         const elGold  = document.getElementById('stat-gold');
+        const elRol   = document.getElementById('stat-rol');
         const elId    = document.getElementById('stat-id');
         if (elMoney) elMoney.innerHTML = formatAmountHTML(s.money);
         if (elGold)  elGold.innerHTML  = formatAmountHTML(s.gold);
+        if (elRol)   elRol.innerHTML   = formatAmountHTML(s.rol);
         if (elId)    elId.textContent  = (s.displayId ?? "--");
         scheduleSyncBars();
       }
@@ -102,7 +110,6 @@ window.addEventListener('message', function (e) {
     }
     return;
   }
-
   if (data.type === 'SetWMPosition') {
     const position = data.position || 'top-right';
     container.classList.remove("top-right","top-left","bottom-right","bottom-left");
@@ -110,18 +117,18 @@ window.addEventListener('message', function (e) {
     scheduleSyncBars();
     return;
   }
-
   if (data.type === 'SetStats') {
     const elMoney = document.getElementById('stat-money');
     const elGold  = document.getElementById('stat-gold');
+    const elRol   = document.getElementById('stat-rol');
     const elId    = document.getElementById('stat-id');
     if (elMoney) elMoney.innerHTML = formatAmountHTML(data.money);
     if (elGold)  elGold.innerHTML  = formatAmountHTML(data.gold);
+    if (elRol)   elRol.innerHTML   = formatAmountHTML(data.rol);
     if (elId)    elId.textContent  = (data.displayId ?? "--");
     scheduleSyncBars();
     return;
   }
-
   if (data.type === 'SetClock') {
     if (typeof data.gameTime === 'string') {
       const elGT = document.getElementById('game-time');
@@ -129,7 +136,6 @@ window.addEventListener('message', function (e) {
     }
     return;
   }
-
   if (data.type === 'ToggleClock') {
     const hud = document.getElementById('hud-clock');
     if (hud) hud.classList.toggle('hidden', data.visible === false);
