@@ -28,6 +28,13 @@ local function _refreshStatEnabled()
   _statEnabled.id    = get("ID",    true)
 end
 
+local CLOCK_ENABLED = true
+if config and config.Clock ~= nil then
+  CLOCK_ENABLED = config.Clock ~= false
+elseif Config and Config.Clock ~= nil then
+  CLOCK_ENABLED = Config.Clock ~= false
+end
+
 local function _sendVisibility()
   _refreshStatEnabled()
   SendNUIMessage({
@@ -193,7 +200,9 @@ local function _afterMenuClosedFast()
     _lastMenuPoll = 0
     if (not IsPauseMenuActive()) and (not isUiOpen) and (not userTurnedOff) and (not IsScreenFadedOut()) then
       _sendVisibility()
-      SendNUIMessage({ type='ToggleClock', visible=true })
+       if CLOCK_ENABLED then
+        SendNUIMessage({ type='ToggleClock', visible=true })
+      end
       if not isUiOpen then
         showWM(true)
       end
@@ -230,9 +239,13 @@ CreateThread(function()
   local lastMinute   = -1
   local lastStatsTs  = 0
   _sendVisibility()
-  local visible = (not userTurnedOff) and (not blocked)
+   local visible = (not userTurnedOff) and (not blocked)
   showWM(visible)
-  SendNUIMessage({ type='ToggleClock', visible = not blocked })
+  if CLOCK_ENABLED then
+    SendNUIMessage({ type='ToggleClock', visible = not blocked })
+  else
+    SendNUIMessage({ type='ToggleClock', visible = false })
+  end
   if visible then _sendStats(true) end
   TriggerServerEvent("AX##LWZ:vlab_watermark:requestGameId")
   while true do
@@ -245,10 +258,14 @@ CreateThread(function()
         showWM(shouldShow)
         if shouldShow then _sendStats(true) end
       end
+        if CLOCK_ENABLED then
       SendNUIMessage({ type='ToggleClock', visible = not blocked })
-    elseif (not blocked) and (not userTurnedOff) and (not isUiOpen) then
+    end
+     elseif (not blocked) and (not userTurnedOff) and (not isUiOpen) then
       showWM(true)
-      SendNUIMessage({ type='ToggleClock', visible = true })
+      if CLOCK_ENABLED then
+        SendNUIMessage({ type='ToggleClock', visible = true })
+      end
       _sendStats(true)
     end
 
@@ -258,10 +275,12 @@ CreateThread(function()
       lastStatsTs = t
     end
 
-    local minuteNow = (GetClockHours() * 60) + GetClockMinutes()
-    if minuteNow ~= lastMinute then
-      lastMinute = minuteNow
-      SendNUIMessage({ type='SetClock', gameTime=_fmtGameTime() })
+    if CLOCK_ENABLED then
+      local minuteNow = (GetClockHours() * 60) + GetClockMinutes()
+      if minuteNow ~= lastMinute then
+        lastMinute = minuteNow
+        SendNUIMessage({ type='SetClock', gameTime=_fmtGameTime() })
+      end
     end
 
     Wait(sleep)
@@ -271,10 +290,12 @@ end)
 AddEventHandler("vorp:SelectedCharacter", function(_)
   Citizen.SetTimeout(2000, function()
     local blocked = _isBlocked()
-    _sendVisibility()
     if not userTurnedOff and not blocked then
       showWM(true)
       _sendStats(true)
+    end
+    if CLOCK_ENABLED then
+      SendNUIMessage({ type='ToggleClock', visible = not blocked })
     end
     TriggerServerEvent("AX##LWZ:vlab_watermark:requestGameId")
   end)
