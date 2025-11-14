@@ -78,9 +78,9 @@ header img {
   height: 100%;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: center;
   align-items: flex-start;
-  gap: 0;
+  gap: calc(4px * var(--ui-scale));
   padding-right: calc(6px * var(--ui-scale));
   min-width: calc(var(--min-stats-width) * var(--ui-scale));
 }
