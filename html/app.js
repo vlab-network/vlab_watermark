@@ -64,6 +64,21 @@ function scheduleSyncBars() {
   applyScale();
 })();
 
+function applyVisibility(flags) {
+  if (!flags) return;
+  const rowMoney = document.getElementById('row-money');
+  const rowGold  = document.getElementById('row-gold');
+  const rowRol   = document.getElementById('row-rol');
+  const rowId    = document.getElementById('row-id');
+
+  if (rowMoney) rowMoney.style.display = (flags.money === false) ? 'none' : 'flex';
+  if (rowGold)  rowGold.style.display  = (flags.gold  === false) ? 'none' : 'flex';
+  if (rowRol)   rowRol.style.display   = (flags.rol   === false) ? 'none' : 'flex';
+  if (rowId)    rowId.style.display    = (flags.id    === false) ? 'none' : 'flex';
+
+  scheduleSyncBars();
+}
+
 (function initRealClock(){
   function pad(n){ return String(n).padStart(2,"0"); }
   function tick(){
@@ -85,7 +100,7 @@ function scheduleSyncBars() {
 window.addEventListener('message', function (e) {
   const data = e.data || {};
   const container = document.getElementById('container');
-  if (data.type === 'DisplayWM') {
+   if (data.type === 'DisplayWM') {
     if (data.visible === true) {
       const position = data.position || 'top-right';
       container.classList.remove("top-right","top-left","bottom-right","bottom-left");
@@ -93,7 +108,7 @@ window.addEventListener('message', function (e) {
       container.style.display = 'flex';
       container.style.opacity = 1;
       if (data.stats) {
-        const s      = data.stats;
+        const s       = data.stats;
         const elMoney = document.getElementById('stat-money');
         const elGold  = document.getElementById('stat-gold');
         const elRol   = document.getElementById('stat-rol');
@@ -102,12 +117,25 @@ window.addEventListener('message', function (e) {
         if (elGold)  elGold.innerHTML  = formatAmountHTML(s.gold);
         if (elRol)   elRol.innerHTML   = formatAmountHTML(s.rol);
         if (elId)    elId.textContent  = (s.displayId ?? "--");
+      }
+      if (data.enabled) {
+        applyVisibility(data.enabled);
+      } else {
         scheduleSyncBars();
       }
     } else {
       container.style.opacity = 0;
       setTimeout(()=>{ container.style.display = 'none'; }, 200);
     }
+    return;
+  }
+  if (data.type === 'SetStatVisibility') {
+    applyVisibility({
+      money: data.money,
+      gold:  data.gold,
+      rol:   data.rol,
+      id:    data.id
+    });
     return;
   }
   if (data.type === 'SetWMPosition') {

@@ -9,6 +9,36 @@ local _vorpCountLocal       = 0
 local _menuOpenCached       = false
 local _lastMenuPoll         = 0
 
+local _statEnabled = {
+  money = true,
+  gold  = true,
+  rol   = true,
+  id    = true
+}
+
+local function _refreshStatEnabled()
+  local function get(name, def)
+    if config and config[name] ~= nil then return config[name] ~= false end
+    if Config and Config[name] ~= nil then return Config[name] ~= false end
+    return def
+  end
+  _statEnabled.money = get("Money", true)
+  _statEnabled.gold  = get("Gold",  true)
+  _statEnabled.rol   = get("Rol",   true)
+  _statEnabled.id    = get("ID",    true)
+end
+
+local function _sendVisibility()
+  _refreshStatEnabled()
+  SendNUIMessage({
+    type  = 'SetStatVisibility',
+    money = _statEnabled.money,
+    gold  = _statEnabled.gold,
+    rol   = _statEnabled.rol,
+    id    = _statEnabled.id
+  })
+end
+
 local function _vorpEnabled()
   return config and (config.VorpMenu == true or config.vorpMenu == true)
 end
@@ -142,7 +172,13 @@ local function showWM(display)
       type     = 'DisplayWM',
       visible  = display,
       position = _getSavedPosition(),
-      stats    = stats
+      stats    = stats,
+      enabled  = {
+        money = _statEnabled.money,
+        gold  = _statEnabled.gold,
+        rol   = _statEnabled.rol,
+        id    = _statEnabled.id
+      }
     })
   end)
   if not ok then
@@ -156,21 +192,10 @@ local function _afterMenuClosedFast()
     Wait(50)
     _lastMenuPoll = 0
     if (not IsPauseMenuActive()) and (not isUiOpen) and (not userTurnedOff) and (not IsScreenFadedOut()) then
+      _sendVisibility()
       SendNUIMessage({ type='ToggleClock', visible=true })
       if not isUiOpen then
-        local stats = _readStats()
-        local ok, err = pcall(function()
-          SendNUIMessage({
-            type     = 'DisplayWM',
-            visible  = true,
-            position = _getSavedPosition(),
-            stats    = stats
-          })
-        end)
-        if not ok then
-          print("^1[RedM-WM] NUI error: "..tostring(err))
-        end
-        isUiOpen = true
+        showWM(true)
       end
     end
   end)
@@ -200,22 +225,18 @@ CreateThread(function()
   userTurnedOff = (GetResourceKvpInt(KVP_OFF_KEY) == 1)
   while not NetworkIsSessionStarted() do Wait(250) end
   Wait(1000)
-
   local blocked      = _isBlocked()
   local lastBlocked  = blocked
   local lastMinute   = -1
   local lastStatsTs  = 0
-
+  _sendVisibility()
   local visible = (not userTurnedOff) and (not blocked)
   showWM(visible)
   SendNUIMessage({ type='ToggleClock', visible = not blocked })
   if visible then _sendStats(true) end
-
   TriggerServerEvent("AX##LWZ:vlab_watermark:requestGameId")
-
   while true do
     local sleep = 200
-
     blocked = _isBlocked()
     if blocked ~= lastBlocked then
       lastBlocked = blocked
@@ -250,6 +271,7 @@ end)
 AddEventHandler("vorp:SelectedCharacter", function(_)
   Citizen.SetTimeout(2000, function()
     local blocked = _isBlocked()
+    _sendVisibility()
     if not userTurnedOff and not blocked then
       showWM(true)
       _sendStats(true)

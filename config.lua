@@ -3,8 +3,13 @@ config = {}
 -- Posizione: 'top-right', 'top-left', 'bottom-left', 'bottom-right'
 config.position = 'top-left'
 
--- Abilita integrazione con vorp_menu per rilevare i menu aperti
+-- Integrazione VORP
 config.VorpMenu = true
-
--- Permetti al player di disattivare il logo con /watermark
 config.allowoff = true
+
+-- ✅ Singole stats
+-- se metti false, quella riga sparisce dalla NUI
+config.Money = true
+config.Gold  = true
+config.Rol   = true
+config.ID    = true
